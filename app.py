@@ -1,333 +1,248 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
-from sklearn.ensemble import IsolationForest
-from io import BytesIO
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.lib import colors
-import pdfplumber
-import base64
-import random
-import plotly.io as pio
+from src.utils import *
+import tempfile
+import hashlib
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from src.triage_utils import create_triage_retriever, create_triage_agent, severity_to_color
+from src.emergency_utils import create_emergency_retriever, create_emergency_agent
+from streamlit_js_eval import get_geolocation
+import time
 
-# Fix for Kaleido
-pio.kaleido.scope.mathjax = None
 
-# App Configuration
-st.set_page_config(
-    page_title="WiFi Guardian 🛡️",
-    page_icon="📶",
-    layout="wide"
+st.set_page_config(page_title="llama-first-aid", page_icon="presentation/logo/logo.png", layout="wide", initial_sidebar_state="expanded")
+
+STORE_SESSIONS_DATA_LOCALLY = False
+STORE_SESSIONS_DATA_GCS = False
+
+app_version = generate_app_id(
+    github_repo="Amatofrancesco99/llama-first-aid",
+    last_commit_file="data/app_version/last_commit.txt",
+    version_file="data/app_version/version.txt"
 )
+print(f"App version: {app_version}")
 
-# Custom CSS for a polished interface
-st.markdown("""
-<style>
-    .st-emotion-cache-1kyxreq {
-        display: flex;
-        flex-flow: wrap;
-        gap: 2rem;
-    }
-    .reportview-container .main .block-container{
-        padding-top: 2rem;
-    }
-    .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #2e3b4e, #1a2639);
-    }
-    .stButton>button {
-        width: 100%;
-        margin: 5px 0;
-        transition: all 0.3s;
-    }
-    .stButton>button:hover {
-        transform: scale(1.05);
-    }
-    .summary-box {
-        padding: 20px;
-        border-radius: 10px;
-        background-color: #2e3b4e;
-        margin: 10px 0;
-    }
-</style>
-""", unsafe_allow_html=True)
 
-# Motivational Quotes
-QUOTES = [
-    "🛡️ Cybersecurity is not a product, but a process!",
-    "🔒 Better safe than hacked!",
-    "📶 A secure network is a happy network!",
-    "🤖 AI guards while you sleep!",
-    "🚨 Detect before you regret!",
-    "💻 Security is always worth the investment!",
-    "🔍 Stay vigilant, stay secure!"
-]
+# Hash session ID using hashlib
+if 'session_id' not in st.session_state:
+    session_id = hashlib.sha256(str(datetime.now()).encode()).hexdigest()
+    st.session_state.session_id = session_id
+else:
+    session_id = st.session_state.session_id
 
-def show_quote():
-    st.markdown(f"<h3 style='text-align: center; color: #4CAF50;'>{random.choice(QUOTES)}</h3>", 
-                unsafe_allow_html=True)
 
-# Main App Function
+if st.sidebar.checkbox("Use my current location", value=False):
+    with st.spinner("Searching for location..."):
+        user_location_info = None
+        while user_location_info is None:
+            user_location_info = get_geolocation()
+            if user_location_info is None:
+                time.sleep(0.5)
+    user_location_info = user_location_info.get('coords', None)
+    user_location = (user_location_info['latitude'], user_location_info['longitude'])
+else:
+    user_location = (None, None)
+
+language, detailed_location, country = get_language(user_location)
+
+# Initialize the LLM with the Google API key from secrets
+llm = init_LLM(API_KEY=st.secrets["GROQ"]["GROQ_API_KEY"])
+YOUTUBE_API_KEY = st.secrets["YOUTUBE"]["YOUTUBE_API_KEY"]
+GOOGLE_MAPS_API_KEY = st.secrets["GOOGLE_MAPS"]["GOOGLE_MAPS_API_KEY"]
+llm_text_model_name = "llama3-70b-8192"
+llm_audio_model_name = "whisper-large-v3"
+file_path_triage = "data/doc_triage/pdf/Manuale-Triage.pdf"
+file_path_emergency = "data/doc_emergency/pdf/manuale_primo_soccorso.pdf"
+prompt_emergency_file_path = "src/templates/emergency_prompt.jinja"
+prompt_everyday_file_path = "src/templates/everyday_prompt.jinja"
+prompt_emergency = load_template(prompt_emergency_file_path)
+prompt_everyday = load_template(prompt_everyday_file_path)
+ensemble_retriever_emergency = None
+ensemble_retriever_triage = None
+triage_agent=None
+
+# Funzione per creare il retriever
+@st.cache_resource
+def load_triage_retriever(file_path, bm25_path, faiss_path):
+    return create_triage_retriever(file_path, bm25_path, faiss_path)
+
+# Funzione per creare il retriever
+@st.cache_resource
+def load_emergency_retriever(file_path, bm25_path, faiss_path):
+    return create_emergency_retriever(file_path, bm25_path, faiss_path)
+
+# Funzione per creare l'triage_agente
+@st.cache_resource
+def load_triage_agent():
+    return create_triage_agent()
+
+@st.cache_resource
+def load_emergency_agent():
+    return create_emergency_agent()
+
+
+ensemble_retriever_triage = load_triage_retriever(file_path_triage, bm25_path="data/bm_25/bm25_triage_index.pkl", faiss_path="data/faiss/faiss_triage_index")
+ensemble_retriever_emergency = load_emergency_retriever(file_path_emergency, bm25_path="data/bm_25/bm25_emergency_index.pkl", faiss_path="data/faiss/faiss_emergency_index")
+triage_agent = load_triage_agent()
+emergency_agent = load_emergency_agent()
+
+
+# Main function
 def main():
-    # Initialize session state variables
-    if 'current_step' not in st.session_state:
-        st.session_state.current_step = 1
-    if 'file_uploaded' not in st.session_state:
-        st.session_state.file_uploaded = False
-    if 'df' not in st.session_state:
-        st.session_state.df = None
+    detailed_location_new = "Unknown" if detailed_location is None else detailed_location
+    st.sidebar.markdown(f"**Location details:** {detailed_location_new}" if language != "it" else f"**Dettagli posizione:** {detailed_location_new}")
+    
+    get_sidebar(language)
 
-    # Sidebar Navigation
-    with st.sidebar:
-        st.title("🔍 Navigation")
-        st.markdown("---")
+    st.title("LLAMA FIRST AID")
+
+    # User query input
+    query = ""
+    image_base64 = ""
+    audio_value = ""
+
+    query = st.chat_input("Describe your issue or emergency" if language != "it" 
+                         else "Descrivi il problema o la situazione di emergenza")
+    #if allow_images:
+    #    captured_image = st.file_uploader("Carica un'immagine (opzionale)", type=["jpg", "jpeg", "png"])
+    #    if captured_image:
+    #        image_base64 = convert_image_to_base64(captured_image, resize=50)
+    audio_value = st.audio_input("Speak with your assistant (optional)" if language != "it" else "Parla col tuo assistente (opzionale)")
+
+    # Default parameters values
+    severity, hospital_name, google_maps_link, video_title, youtube_link = None, None, None, None, None
+
+    if (query or (query and image_base64)) or (audio_value or (audio_value and image_base64)):
+
+        translated_query, source_language = translate(llm=llm, llm_model_name=llm_text_model_name, message=query, target_language="English")
+
+        trscb_message_template = load_template("src/templates/trscb_message_template.jinja")
+        trscb_message = trscb_message_template.render()
         
-        if st.button("📤 1. Upload File", help="Upload your network logs"):
-            st.session_state.current_step = 1
-        if st.button("📊 2. Data Visualization", disabled=not st.session_state.file_uploaded):
-            st.session_state.current_step = 2
-        if st.button("📈 3. Statistics Analysis", disabled=not st.session_state.file_uploaded):
-            st.session_state.current_step = 3
-        if st.button("📥 4. Download Report", disabled=not st.session_state.file_uploaded):
-            st.session_state.current_step = 4
-
-    # Main Content Area
-    if st.session_state.current_step == 1:
-        upload_file_section()
-    elif st.session_state.current_step == 2:
-        visualization_section()
-    elif st.session_state.current_step == 3:
-        statistics_section()
-    elif st.session_state.current_step == 4:
-        download_section()
-
-def upload_file_section():
-    st.title("📤 Upload Network Logs")
-    st.markdown("---")
-    
-    if not st.session_state.file_uploaded:
-        show_quote()
-        st.markdown("""
-        ### Welcome to WiFi Guardian! 🤖
-        **Protect your network with AI-powered anomaly detection**
-        1. Upload network logs 📤
-        2. Visualize patterns 📊
-        3. Generate reports 📄
-        """)
-    
-    uploaded_file = st.file_uploader(
-        "Choose network logs (CSV/TXT/PDF)",
-        type=["csv", "txt", "pdf"],
-        label_visibility="collapsed"
-    )
-    
-    if uploaded_file:
-        try:
-            process_file(uploaded_file)
-            st.session_state.file_uploaded = True
-            st.success("✅ File processed successfully!")
+        if audio_value:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
+                temp_audio_path = save_uploaded_audio(audio_value.getvalue(), temp_audio_file.name)
+            query = transcribe_audio(llm, llm_audio_model_name, temp_audio_path, trscb_message, language)
             
-            # Show file summary
-            st.subheader("📋 Upload Summary")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total Records", len(st.session_state.df))
-            with col2:
-                anomalies = sum(st.session_state.df['anomaly'] == -1)
-                st.metric("Anomalies Detected", f"{anomalies} ({anomalies/len(st.session_state.df)*100:.1f}%)")
-            with col3:
-                st.metric("Max Traffic", f"{st.session_state.df['traffic'].max():.2f} Mbps")
+        if "chat_history" not in st.session_state:
+            st.session_state.chat_history = [HumanMessage(content=query)]
+            st.session_state.chat_history_translated = [HumanMessage(content=translated_query)]
 
-        except Exception as e:
-            st.error(f"Error processing file: {str(e)}")
-
-def visualization_section():
-    st.title("📊 Data Visualization")
-    st.markdown("---")
-    
-    # 2D Visualization
-    st.subheader("2D Traffic Analysis 🌐")
-    # Use 'timestamp' if available; if not, generate a dummy one
-    df = st.session_state.df.copy()
-    if 'timestamp' not in df.columns:
-        df['timestamp'] = pd.date_range(start="2021-01-01", periods=len(df), freq="T")
-    fig2d = px.scatter(
-        df,
-        x='timestamp',
-        y='traffic',
-        color='anomaly',
-        color_discrete_map={-1: 'orange', 1: 'blue'},
-        title="2D Traffic Analysis"
-    )
-    st.plotly_chart(fig2d, use_container_width=True)
-    
-    # 3D Visualization
-    st.subheader("3D Network Health 🌍")
-    fig3d = px.scatter_3d(
-        df,
-        x='latency',
-        y='packet_loss',
-        z='traffic',
-        color='anomaly',
-        color_discrete_map={-1: 'orange', 1: 'blue'},
-        title="3D Network Analysis"
-    )
-    st.plotly_chart(fig3d, use_container_width=True)
-
-def statistics_section():
-    st.title("📈 Statistical Analysis")
-    st.markdown("---")
-    
-    st.subheader("Data Summary 📝")
-    st.dataframe(st.session_state.df.describe(), use_container_width=True)
-    
-    st.subheader("Anomaly Distribution 📊")
-    anomaly_counts = st.session_state.df['anomaly'].value_counts()
-    fig = px.pie(
-        names=['Normal', 'Anomaly'],
-        values=[anomaly_counts.get(1, 0), anomaly_counts.get(-1, 0)],
-        hole=0.4,
-        color_discrete_sequence=['blue', 'orange'],
-        title="Anomaly Distribution"
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-def download_section():
-    st.title("📥 Download Report")
-    st.markdown("---")
-    
-    if st.button("🖨️ Generate Full Report"):
-        with st.spinner("Generating PDF report..."):
-            generate_pdf_report()
-            st.success("Report generated successfully!")
-            
-    if 'pdf_report' in st.session_state:
-        st.markdown("---")
-        b64 = base64.b64encode(st.session_state.pdf_report).decode()
-        href = f'<a href="data:application/octet-stream;base64,{b64}" download="wifi_report.pdf">📥 Download Full Report</a>'
-        st.markdown(href, unsafe_allow_html=True)
-
-def process_file(uploaded_file):
-    try:
-        # Process CSV files
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        # Process TXT files
-        elif uploaded_file.name.endswith('.txt'):
-            lines = [line.decode().strip().split(',') for line in uploaded_file.readlines()]
-            df = pd.DataFrame(lines[1:], columns=lines[0])
-        # Process PDF files using pdfplumber
-        elif uploaded_file.name.endswith('.pdf'):
-            with pdfplumber.open(uploaded_file) as pdf:
-                text = '\n'.join([page.extract_text() for page in pdf.pages])
-            lines = [line.split(',') for line in text.split('\n') if line]
-            df = pd.DataFrame(lines[1:], columns=lines[0])
+            if image_base64:
+                st.session_state.chat_history.append({
+                    "role": "user",
+                    "content": f"data:image/jpeg;base64,{image_base64}"
+                })
         else:
-            raise ValueError("Unsupported file type.")
-        
-        # Ensure required numeric columns exist and convert them
-        numeric_cols = ['traffic', 'latency', 'packet_loss']
-        for col in numeric_cols:
-            if col not in df.columns:
-                raise ValueError(f"Column '{col}' not found in data.")
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-        # Run anomaly detection using IsolationForest with 40% contamination
-        clf = IsolationForest(contamination=0.4, random_state=42)
-        df['anomaly'] = clf.fit_predict(df[numeric_cols])
-        
-        st.session_state.df = df
+            st.session_state.chat_history.append(HumanMessage(content=query))
+            st.session_state.chat_history_translated.append(HumanMessage(content=translated_query))
 
-    except Exception as e:
-        st.error(f"Error processing file: {str(e)}")
-        raise
+        # Mostra la cronologia della conversazione
+        for message in st.session_state.chat_history:
+            if not isinstance(message, SystemMessage):
+                if isinstance(message, HumanMessage):
+                    role = "user"
+                elif isinstance(message, AIMessage):
+                    role = "assistant"
+                with st.chat_message(role):
+                    st.markdown(message.content)
+            
+        with st.spinner("Assessing emergency severity" if language != "it" else "Sto pensando per capire la gravità della situazione..."):
+            # Call the LLM with the Jinja prompt and DataFrame context
+            with st.chat_message("assistant"):
+                input = {
+                    "messages": st.session_state.chat_history_translated,
+                    "ensemble_retriever_triage": ensemble_retriever_triage,
+                    "questions" : []
+                }
+                start_time = time.time()
+                output = triage_agent.invoke(input)
+                end_time = time.time()
+                severity = output.get('severity', None)
+                severity = int(severity) if severity is not None else None
+                if severity:
+                    color = severity_to_color[severity]
+                    st.markdown(
+                        (f"<span style='font-size: 16px;'>Emergency has <strong>severity {severity}</strong></span>" if language != "it"
+                        else f"<span style='font-size: 16px;'>Al tuo codice è stato affidato <strong>codice {severity}</strong></span>"),
+                        # f"<div style='display: inline-block; width: 20px; height: 20px; background-color: {color}; border-radius: 50%;'></div> ",
+                        unsafe_allow_html=True
+                    )
+                    response = severity
+                    triage_agent_output = output['full_query']
+                else:
+                    response = output['questions'][-1].content
+                    response, _ = translate(llm=llm, llm_model_name=llm_text_model_name, message=response, target_language=source_language)
+                    st.markdown(response, unsafe_allow_html=True)    
+                st.session_state.chat_history.extend([AIMessage(content=str(response))])
 
-def generate_pdf_report():
-    try:
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter)
-        styles = getSampleStyleSheet()
-        elements = []
-        
-        # Custom Title Style
-        title_style = ParagraphStyle(
-            name='Title',
-            parent=styles['Heading1'],
-            fontSize=18,
-            textColor=colors.darkblue,
-            spaceAfter=14
-        )
-        
-        # Add Title
-        elements.append(Paragraph("WiFi Network Anomaly Detection", title_style))
-        elements.append(Spacer(1, 12))
-        
-        # Add Summary Section
-        elements.append(Paragraph("<b>Detection Summary:</b>", styles['Heading2']))
-        summary_text = f"""
-        • Total Data Points: {len(st.session_state.df)}<br/>
-        • Anomalies Detected: {sum(st.session_state.df['anomaly'] == -1)}<br/>
-        • Maximum Traffic: {st.session_state.df['traffic'].max():.2f} Mbps<br/>
-        • Average Latency: {st.session_state.df['latency'].mean():.2f} ms<br/>
-        • Peak Packet Loss: {st.session_state.df['packet_loss'].max():.2f}%<br/>
-        """
-        elements.append(Paragraph(summary_text, styles['BodyText']))
-        elements.append(PageBreak())
-        
-        # Generate and embed plots in memory using BytesIO
-        
-        # 2D Plot
-        df = st.session_state.df.copy()
-        if 'timestamp' not in df.columns:
-            df['timestamp'] = pd.date_range(start="2021-01-01", periods=len(df), freq="T")
-        fig2d = px.scatter(df, x='timestamp', y='traffic', 
-                           color='anomaly', title="2D Traffic Analysis",
-                           color_discrete_map={-1: 'orange', 1: 'blue'})
-        img_bytes_2d = fig2d.to_image(format="png", engine="kaleido")
-        img2d_io = BytesIO(img_bytes_2d)
-        
-        # 3D Plot
-        fig3d = px.scatter_3d(df, x='latency', y='packet_loss',
-                              z='traffic', color='anomaly', title="3D Network Analysis",
-                              color_discrete_map={-1: 'orange', 1: 'blue'})
-        img_bytes_3d = fig3d.to_image(format="png", engine="kaleido")
-        img3d_io = BytesIO(img_bytes_3d)
-        
-        # Add 2D Plot
-        elements.append(Paragraph("<b>2D Traffic Analysis</b>", styles['Heading2']))
-        elements.append(Image(img2d_io, width=6*inch, height=4*inch))
-        elements.append(Spacer(1, 12))
-        
-        # Add 3D Plot
-        elements.append(Paragraph("<b>3D Network Analysis</b>", styles['Heading2']))
-        elements.append(Image(img3d_io, width=6*inch, height=4*inch))
-        elements.append(PageBreak())
-        
-        # Add Statistics Section
-        elements.append(Paragraph("<b>Statistical Report</b>", styles['Heading1']))
-        stats = st.session_state.df.describe()
-        for col in ['traffic', 'latency', 'packet_loss']:
-            elements.append(Paragraph(f"<b>{col.capitalize()} Statistics:</b>", styles['Heading3']))
-            stats_text = f"""
-            • Mean: {stats[col]['mean']:.2f}<br/>
-            • Std Dev: {stats[col]['std']:.2f}<br/>
-            • Min: {stats[col]['min']:.2f}<br/>
-            • 25%: {stats[col]['25%']:.2f}<br/>
-            • 50%: {stats[col]['50%']:.2f}<br/>
-            • 75%: {stats[col]['75%']:.2f}<br/>
-            • Max: {stats[col]['max']:.2f}<br/>
-            """
-            elements.append(Paragraph(stats_text, styles['BodyText']))
-            elements.append(Spacer(1, 12))
-        
-        doc.build(elements)
-        st.session_state.pdf_report = buffer.getvalue()
+        if severity:
+            with st.spinner(
+                ("The emergency agent is thinking to find a solution..." if severity > 2 else
+                "The agent for common situations is thinking to find a solution...") if language != "it" else
+                ("L'agente per le emergenze sta pensando per trovare una soluzione..." if severity > 2 else
+                "L'agente per le situazioni comuni sta pensando per trovare una soluzione...")
+            ):
+                # Call the LLM with the Jinja prompt and DataFrame context
+                with st.chat_message("assistant"):
+                    input = {
+                        "full_query": triage_agent_output,
+                        "prompt": prompt_emergency if severity>2 else prompt_everyday,
+                        "severity" : severity,
+                        "history" : st.session_state.chat_history[:-1],
+                        "retry_count_youtube": 0,
+                        "retry_count_web_search": 0, 
+                        "user_location" : user_location,
+                        "ensemble_retriever" : ensemble_retriever_emergency,
+                        "youtube_api_key": YOUTUBE_API_KEY,
+                        "google_maps_api_key": GOOGLE_MAPS_API_KEY
+                    }
+                    start_time = time.time()
+                    response, google_maps_link, hospital_name, youtube_link, video_title = emergency_agent.invoke(input)['final_result']
+                    end_time = time.time()
 
-    except Exception as e:
-        st.error(f"Error generating report: {str(e)}")
+                    # Initialize an empty string to store the full response as it is built
+                    response, _ = translate(llm=llm, llm_model_name=llm_text_model_name, message=response, target_language=source_language)
+                    st.markdown(response.replace("\\n", "\n"), unsafe_allow_html=True)
+
+                    if severity > 2:
+                        # Mostra il link di Google Maps
+                        st.markdown(f"### Nearest hospital: **{hospital_name}**" if language != "it" else f"### Ospedale più vicino: **{hospital_name}**")
+                        st.markdown(f"[Google Maps]({google_maps_link})")
+
+                    if video_title:
+                        # Mostra il video di YouTube
+                        st.markdown(f"## YouTube Video:" if language != "it" else f"## Video YouTube:")
+                        st.markdown(f"### {video_title}:")
+                    st.session_state.chat_history.extend([{"role": "assistant", "content": response}])
+
+                    if 'https' in youtube_link:
+                        video_url = youtube_link.replace("watch?v=", "embed/")
+                        youtube_embed = f'<iframe width="560" height="315" src="{video_url}" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>'
+                        st.markdown(f"<br>{youtube_embed}", unsafe_allow_html=True)
+                st.session_state.chat_history.extend([AIMessage(content=str(response))])
+        
+
+        # Save session data either locally or to GCS, if enabled
+        if STORE_SESSIONS_DATA_LOCALLY or STORE_SESSIONS_DATA_GCS:
+            response_time = end_time - start_time
+            session_filename = create_session_filename(session_id)
+            local_path_name = "data/sessions_history" if STORE_SESSIONS_DATA_LOCALLY else None
+            bucket_name = st.secrets["GCP"]["BUCKET_NAME"] if STORE_SESSIONS_DATA_GCS else None
+            gcs_client = initialize_gcs_client(SERVICE_ACCOUNT_KEY=st.secrets["GCP"]["SERVICE_ACCOUNT_KEY"]) if STORE_SESSIONS_DATA_GCS else None
+            store_session_data(
+                session_id=session_id, app_version=app_version,
+                user_location=user_location,
+                country=country, 
+                medical_class=get_medical_class(llm=llm, llm_model_name=llm_text_model_name, chat_history=st.session_state.chat_history), 
+                severity=severity,
+                hospital_details=[hospital_name, google_maps_link],
+                youtube_video_details=[video_title, youtube_link],
+                query=query, response=response, response_time=response_time,
+                session_filename=session_filename,
+                local_path_name=local_path_name,
+                bucket_name=bucket_name, client=gcs_client
+            )
+
 
 if __name__ == "__main__":
     main()

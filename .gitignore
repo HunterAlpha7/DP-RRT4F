@@ -1,0 +1,17 @@
+venv
+.env
+*.streamlit
+*output.*
+__pycache__
+useless
+img
+src/test.ipynb
+presentation/*
+!presentation/architecture.png
+!presentation/logo/
+!presentation/presentation.pdf
+!presentation/agents
+.DS_Store
+notebooks/*
+data/sessions_history/*
+!data/sessions_history/store.py

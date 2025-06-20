@@ -1,108 +1,124 @@
-# 🛡️ WiFi Guardian: AI-Powered Network Security
+<div align="center">
 
-> **Anomaly Detection System for Public WiFi Networks**
+<img src="presentation/logo/logo.png" width="210" /><br>
 
-![Demo](https://img.shields.io/badge/Demo-Live_Prototype-success?style=for-the-badge&logo=huggingface) ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
+# **LLAMA First Aid: leveraging GenAI to provide contextual, step-by-step emergency medical assistance for immediate life-saving response**
 
-<p align="center">
-  <img src="https://media.giphy.com/media/26n6WywJyh39n1pBu/giphy.gif" width="300">
-</p>
+![Views](https://komarev.com/ghpvc/?username=FirstAid&label=Views&color=4285F4&style=for-the-badge)
+[![Presentation](https://img.shields.io/badge/Presentation-%23DB4437.svg?style=for-the-badge&logo=read-the-docs&logoColor=white)](presentation/presentation.pdf)
+<br>
+![Meta](https://img.shields.io/badge/Meta-%23F4B400.svg?style=for-the-badge&logo=Meta&logoColor=white)
+![Google Cloud](https://img.shields.io/badge/GoogleCloud-%230F9D58.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
+![Python](https://img.shields.io/badge/PYTHON-%234285F4?style=for-the-badge&logo=python&logoColor=white&color=4285F4)
 
-## 🌟 Overview
-WiFi Guardian is an AI-powered security solution designed to detect suspicious patterns in public WiFi networks. It helps prevent potential threats by using:
+> *This project secured second place in the LLaMA Impact Rome Hackathon 2024 ([lablab.ai](https://lablab.ai/hackathon-llama-impatto-roma)).*
 
-✅ **Machine Learning for anomaly detection**  
-✅ **3D Data Visualizations**  
-✅ **Automated PDF Reporting**  
-✅ **Real-Time Alerts for Suspicious Activity**  
+</div>
 
----
+## Overview
+**LLAMA First Aid** is a cutting-edge, web-based assistant designed to provide immediate, step-by-step guidance for first aid during medical emergencies. Powered by **Meta's LLaMA** (Large Language Model Meta AI), this app leverages advanced natural language processing capabilities to understand critical situations and deliver real-time, personalized first aid instructions. Built with **Streamlit**, LLAMA First Aid offers a user-friendly interface that allows anyone—whether trained or not—to respond effectively in a medical emergency.
 
-## 🔑 Key Features
-- 📤 **Multi-Format Log Upload** (CSV, TXT, PDF)
-- 📊 **Dynamic Dashboard with 3D Graphs**
-- 🔮 **Predictive Analysis with Isolation Forest Algorithm**
-- 📄 **Professional PDF Reports for Admins**
-- 🚨 **Proactive Alerts to Prevent Attacks**
+The name **LLAMA** is not only a fun reference to the friendly, woolly animal but also an acronym that reflects the core purpose of our application. Just like **Meta’s LLaMA** model processes complex language, **LLAMA First Aid** processes emergency situations and generates clear, actionable advice for users in real time.
 
----
+### The Power of LLaMA Technology in LLAMA First Aid
+While **Meta’s LLaMA** refers to one of the most advanced AI language models available, our **LLAMA First Aid** app carries the same acronym. The shared name highlights the synergy between cutting-edge AI and life-saving applications:
 
-## ⚙️ Installation
-### 1️⃣ Clone the Repository
-```bash
-git clone https://github.com/SUNBALSHEHZADI/wifi-guardian.git
-cd wifi-guardian
-```
+- **L**ife-saving  
+- **L**ive  
+- **A**ssistant  
+- **M**edical  
+- **A**ssistance  
 
-### 2️⃣ Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 3️⃣ Run the Application
-```bash
-streamlit run app.py
-```
+The acronym **LLAMA** in our app stands for a **Live Assistant for Medical Assistance** designed to save lives during emergencies. In a similar fashion, **Meta’s LLaMA** model processes human language, while **LLAMA First Aid** processes emergency medical data to provide life-saving instructions.
 
 ---
 
-## 🚀 How to Use
-### 📥 Upload Network Logs
-- Supports `.csv`, `.txt`, `.pdf`
-- Use the [generate_test_data.py](#) script to create sample data
-
-### 📊 Visualize Data Trends
-```python
-# Sample dataset format
-timestamp,traffic,latency,packet_loss
-2024-01-01 00:00:00,162.34,28.45,0.82
-```
-
-### 📈 Analyze and Generate Reports
-- Real-time **Anomaly Distribution**
-- Export insights in **PDF Format**
-
-### ⚡ Get Instant Alerts
-- Detects threats **before failures occur**
-- Keeps networks **secure and stable**
+## Key Features
+- **Real-Time Emergency Assistance**: Powered by **Meta’s LLaMA** AI, LLAMA First Aid provides users with real-time, context-specific advice to handle medical emergencies as they unfold.
+- **Step-by-Step Instructions**: LLAMA guides users through critical first aid techniques—such as CPR, choking management, wound care, and more—with clear and easy-to-follow steps.
+- **Interactive Protocols**: LLAMA adapts its advice based on the user's responses, offering tailored first aid protocols that fit the exact nature of the emergency.
+- **Educational Videos**: For complex medical procedures, LLAMA includes video tutorials, helping users understand and practice key first aid techniques.
+- **User-Friendly Interface**: Built with **Streamlit**, the app is intuitive, simple, and easy to use, regardless of the user’s medical knowledge or experience.
+- **Custom Agents for Content Relevance**: We have created **custom agents** specifically tailored to the first aid domain, ensuring that the responses generated by **LLaMA** remain focused on providing clear, relevant, and actionable first aid guidance. These agents prevent the model from straying off-topic, optimizing the app’s performance for emergency situations.
+- **Multi-Agent Approach for Severity-Based Response**: The system detects the severity of the situation and triggers different agents accordingly. Each agent is specialized for specific emergency scenarios, enabling a more tailored, precise, and effective response. This multi-agent approach ensures that the user receives the most relevant and immediate advice, tailored to the gravity of the problem.
+- **Dual Input (Text and Audio)**: Users can interact with the assistant through **text** or **audio**, providing flexibility to respond faster in critical situations. The audio input also helps to ease communication in high-stress scenarios where typing might not be possible.
+- **Location-Based Assistance**: The app utilizes the user’s geographical location to suggest nearby hospitals or emergency services, making it easier for the user to act quickly. Depending on the severity of the situation, LLAMA will suggest whether it’s better to contact emergency services or go to the hospital directly. This ensures the user can make an informed decision, optimizing the response time and care.
+- **Video Embedding in Web App**: All tutorial videos are directly embedded within the app, ensuring smooth access and no need for external platforms. This guarantees that users can access life-saving video demonstrations instantly without distractions or delays.
+- **Saving All Interactions in History**: For each session, **LLAMA First Aid** automatically saves the following data in a **GCP bucket**. The data is anonimized and is used solely for the purposes of generating dashboards, evaluating the performance of the LLM, and supporting other features. It ensures that all interactions are tracked and can be reviewed later, helping improve accuracy and offering insight into previous guidance. The data is used exclusively for system improvement, performance monitoring, and tracking over time.
+- **Advanced Insights Dashboard**: We have developed a comprehensive **dashboard** that provides advanced insights into the collected data. This dashboard includes real-time information on system performance, such as the most frequent medical emergencies, the locations where incidents are occurring most often, and trends over time. By analyzing this data, we can continuously improve the app’s response effectiveness and identify areas where additional resources may be needed.
 
 ---
 
-## 🛠️ Tech Stack
-- 🎈 **Frontend:** Streamlit
-- 🤖 **Machine Learning:** scikit-learn
-- 📊 **Visualization:** Plotly
-- 📄 **Reporting:** ReportLab
-- 🐍 **Runtime:** Python 3.10
+## How It Works
+![image](presentation/architecture.png)
+
+### **1. User Interaction**
+The user accesses the LLAMA First Aid web application and provides key information about the emergency. LLAMA asks targeted questions to assess the situation and understand the patient's condition (e.g., symptoms, injury type, etc.).
+
+### **2. AI-Driven Assistance**
+Using **Meta’s LLaMA** technology, the app processes the user’s responses and interprets the medical context. LLAMA then provides the most appropriate life-saving advice, guiding the user through the necessary actions.
+
+### **3. Triage Agent-Based Response**
+LLAMA uses a **triage agent** to first assess the severity of the emergency. This triage agent evaluates the situation based on the user’s input and determines how critical the situation is. Once the severity is assessed, the triage agent routes the request to the appropriate specialized agent. These specialized agents are tailored for different types of emergencies (e.g., CPR, choking, wound care) and ensure the advice given is precise and relevant. 
+
+- If the situation is severe (e.g., cardiac arrest), the triage agent will route the request to emergency agents that prioritize life-saving steps.
+- For less critical cases, the triage agent routes the request to agents that provide guidance for handling the situation in a calm and effective manner.
+
+### **4. Search for the Best Answer**
+LLAMA pulls information not only from its internal database but also from external sources such as trusted websites and **YouTube**. This helps to ensure that the guidance provided is always up to date and accurate. By searching multiple sources, LLAMA cross-references information to deliver the best possible advice.
+
+### **5. Step-by-Step Guidance**
+For each emergency, LLAMA delivers a structured, easy-to-follow process. Whether it's performing CPR, assisting someone who’s choking, or treating a burn, LLAMA ensures that each step is clearly communicated to reduce confusion and maximize effectiveness.
+
+### **6. Video Tutorials**
+For complex tasks that require hands-on learning, LLAMA presents short, clear video tutorials that visually demonstrate first aid techniques, so users can feel confident while performing life-saving procedures.
+
+### **7. Real-Time Adaptation**
+As users progress through the app, LLAMA continues to adapt its instructions based on real-time inputs, ensuring that the advice remains relevant and specific to the user’s level of expertise and the situation at hand.
+
+### **8. Hospital Suggestion**
+Based on the user's **location**, LLAMA evaluates the severity of the situation and suggests the nearest hospital or emergency service. If the emergency is critical, LLAMA will recommend calling an ambulance or contacting the nearest medical facility directly. In less severe cases, it may suggest the user proceed to the hospital on their own or continue with the first aid steps.
+
+### **9. Session Data and Insights**
+After each session, **LLAMA First Aid** saves interaction data, including the user's queries, responses, medical information, and location, in an anonymized form. This anonymized data is then used to generate valuable **insights** through advanced dashboards. The data helps track trends in emergency situations, monitor the system’s performance, and identify the most common medical emergencies and dangerous areas. This allows us to continually improve the application’s accuracy, responsiveness, and overall effectiveness in delivering life-saving guidance.
 
 ---
 
-## 📁 Data Format
-```csv
-timestamp,traffic,latency,packet_loss
-2024-01-01 00:00:00,150.2,25.1,0.5
-2024-01-01 00:01:00,480.6,160.8,12.3
-```
+## Current Features and Enhancements
 
-**Generate sample data:**
-```bash
-python generate_test_data.py --samples 1000 --anomaly 0.4
-```
+- **Dual Input (Text and Audio) for Speed and Efficiency**: At the moment, LLAMA First Aid allows users to interact with the assistant through two input modes: **text** and **audio**. This dual input capability ensures that users can respond quickly and effectively during high-pressure emergencies—whether typing their query or speaking directly into the app. This flexibility speeds up the process and makes the app more efficient for users in stressful situations.
+
+- **Saving All Interactions in History**: For each session, **LLAMA First Aid** automatically saves the following data in a **history JSON file** (GCP bucket):
+    - **session_id**: Unique identifier for each user session.
+    - **app_version**: The version of the LLAMA First Aid app being used.
+    - **location**: The geographical location of the user.
+    - **timestamp**: The exact time when the session was initiated.
+    - **medical_class**: The category or type of medical issue (e.g., injury, illness).
+    - **severity**: The severity level of the medical issue (e.g., low, high).
+    - **hospital**: Information about the nearest hospital.
+        - **name**: The name of the hospital.
+        - **gmaps_link**: A Google Maps link to the hospital’s location.
+    - **youtube_video**: Links to relevant YouTube videos for further assistance.
+        - **title**: The title of the video.
+        - **link**: The URL to the video.
+    - **queries**: A list of all user queries during the session.
+    - **responses**: A list of all assistant responses during the session.
+    - **response_times**: A list of time intervals for each response.
+
+    This data is used for generating dashboards, evaluating the performance of the LLM, and supporting other features. It ensures that all interactions are tracked and can be reviewed later, helping improve accuracy and offering insight into previous guidance.
 
 ---
 
-## 🤝 Contributing
-💡 **Have ideas?** Submit feature requests  
-🐛 **Found a bug?** Report issues on GitHub  
-👩💻 **Want to contribute?** Submit pull requests to the `dev` branch  
+## Future Features and Expansions
+
+- **Image Upload for Contextual Understanding**: In future updates, LLAMA First Aid will support **image uploads**, allowing users to share photos of the emergency situation (e.g., a wound, injury, or environment). This will help the AI model understand the gravity of the situation better, providing faster and more accurate solutions based on visual data.
+
+- **Evaluation of Response Accuracy**: LLAMA will introduce a feature to **evaluate the correctness of the responses**. Users will be able to rate the quality and usefulness of the advice provided, which will allow LLAMA to continuously improve its accuracy through user feedback.
+
+- **Alerting**: Future updates will enable the system to send **automatic alerts** to external parties, such as medical professionals or emergency contacts, when critical issues are detected. This will significantly enhance LLAMA First Aid's effectiveness during real-time emergencies.
 
 ---
 
-## 📜 License
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
-
----
-
-<p align="center">
-  🚀 Built with passion by SUNBALSHEHZADI | 🔐 Secure your network today!
-</p>
+## Why LLAMA First Aid?
+- **Immediate Response**: In critical emergencies, LLAMA First Aid provides **instant assistance**, offering users immediate, life-saving guidance.
+- **Comprehensive Coverage**: From basic injuries to lifes
