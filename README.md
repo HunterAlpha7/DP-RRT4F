@@ -6,7 +6,7 @@
 
 
 
-> *This project secured second place in the LLaMA Impact Rome Hackathon 2024.*
+
 
 </div>
 
