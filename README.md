@@ -4,14 +4,9 @@
 
 # **LLAMA First Aid: leveraging GenAI to provide contextual, step-by-step emergency medical assistance for immediate life-saving response**
 
-![Views](https://komarev.com/ghpvc/?username=FirstAid&label=Views&color=4285F4&style=for-the-badge)
-[![Presentation](https://img.shields.io/badge/Presentation-%23DB4437.svg?style=for-the-badge&logo=read-the-docs&logoColor=white)](presentation/presentation.pdf)
-<br>
-![Meta](https://img.shields.io/badge/Meta-%23F4B400.svg?style=for-the-badge&logo=Meta&logoColor=white)
-![Google Cloud](https://img.shields.io/badge/GoogleCloud-%230F9D58.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
-![Python](https://img.shields.io/badge/PYTHON-%234285F4?style=for-the-badge&logo=python&logoColor=white&color=4285F4)
 
-> *This project secured second place in the LLaMA Impact Rome Hackathon 2024 ([lablab.ai](https://lablab.ai/hackathon-llama-impatto-roma)).*
+
+> *This project secured second place in the LLaMA Impact Rome Hackathon 2024.*
 
 </div>
 
