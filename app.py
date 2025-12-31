@@ -29,21 +29,6 @@ if 'session_id' not in st.session_state:
 else:
     session_id = st.session_state.session_id
 
-
-if st.sidebar.checkbox("Use my current location", value=False):
-    with st.spinner("Searching for location..."):
-        user_location_info = None
-        while user_location_info is None:
-            user_location_info = get_geolocation()
-            if user_location_info is None:
-                time.sleep(0.5)
-    user_location_info = user_location_info.get('coords', None)
-    user_location = (user_location_info['latitude'], user_location_info['longitude'])
-else:
-    user_location = (None, None)
-
-language, detailed_location, country = get_language(user_location)
-
 # Initialize the LLM with the Google API key from secrets
 llm = init_LLM(API_KEY=st.secrets["GROQ"]["GROQ_API_KEY"])
 YOUTUBE_API_KEY = st.secrets["YOUTUBE"]["YOUTUBE_API_KEY"]
@@ -88,6 +73,35 @@ emergency_agent = load_emergency_agent()
 
 # Main function
 def main():
+    # Initialize location in session state if not exists
+    if 'location_requested' not in st.session_state:
+        st.session_state.location_requested = False
+        st.session_state.user_location = (None, None)
+    
+    # Handle location checkbox
+    location_checkbox = st.sidebar.checkbox("Use my current location", value=st.session_state.location_requested)
+    
+    # Only request location if checkbox is checked and we haven't requested it yet
+    if location_checkbox and not st.session_state.location_requested:
+        with st.spinner("Searching for location..."):
+            user_location_info = get_geolocation(key="user_location_request")
+            if user_location_info and user_location_info.get('coords'):
+                user_location_info = user_location_info.get('coords', None)
+                st.session_state.user_location = (user_location_info['latitude'], user_location_info['longitude'])
+                st.session_state.location_requested = True
+            else:
+                st.warning("Could not get your location. Using default location.")
+                st.session_state.user_location = (None, None)
+                st.session_state.location_requested = True
+    elif not location_checkbox:
+        # Reset location if checkbox is unchecked
+        st.session_state.location_requested = False
+        st.session_state.user_location = (None, None)
+    
+    user_location = st.session_state.user_location
+
+    language, detailed_location, country = get_language(user_location)
+
     detailed_location_new = "Unknown" if detailed_location is None else detailed_location
     st.sidebar.markdown(f"**Location details:** {detailed_location_new}" if language != "it" else f"**Dettagli posizione:** {detailed_location_new}")
     
